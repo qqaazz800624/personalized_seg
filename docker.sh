@@ -4,9 +4,9 @@ docker run \
   --name monailabel \
   --net=host \
   --gpus=all \
-  -e NVIDIA_VISIBLE_DEVICES=1 \
+  -e NVIDIA_VISIBLE_DEVICES=2 \
   -v $PWD/MONAILabel/sample-apps:/workspace \
-  -v /data2/open_dataset/MSD/Task03_Liver/imagesTr:/data \
+  -v /data2/open_dataset/MSD/Task03_Liver/imagesTs:/data \
   -w /workspace/radiology \
   nanaha1003/monailabel:latest \
   monailabel start_server \

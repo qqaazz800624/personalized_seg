@@ -14,9 +14,14 @@ model_mednext = mednext_base(spatial_dims=3,
                      )
 
 model_mednext.eval()
+#%%
+import torch
 
 ckpt_path = "/home/u/qqaazz800624/personalized_seg/mri_seg/MRI/bgz2zat3/checkpoints/best_model.ckpt"
 ckpt = torch.load(ckpt_path, map_location='cpu')
+
+print(ckpt["state_dict"])
+#%%
 
 if 'state_dict' in ckpt:
     state_dict = ckpt['state_dict']
@@ -40,6 +45,25 @@ torch.save(ckpt, new_ckpt_path)
 
 #%%
 
+import torch
+
+ckpt_path = "/home/u/qqaazz800624/personalized_seg/MONAILabel/sample-apps/radiology/model/best_model_pan.pt"
+#ckpt_path = "/home/u/qqaazz800624/personalized_seg/MONAILabel/sample-apps/radiology/model/best_FL_global_model.pt"
+
+
+ckpt = torch.load(ckpt_path, map_location='cpu')
+ckpt
+
+
+
+#%%
+
+
+ckpt['state_dict'].keys()
+
+
+
+#%%
 
 
 
