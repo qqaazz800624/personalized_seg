@@ -4,3 +4,5 @@ custom
 AMOS
 totalsegmentator_mri
 PAAL-MedSeg
+ConDistFL
+__pycache__
