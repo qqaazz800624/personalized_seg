@@ -11,7 +11,9 @@ from typing import Any
 from custom.mednext import mednext_base
 
 class ActiveLearningSegmentationModule(pl.LightningModule):
-    def __init__(self, lr=1e-4, num_classes=3):
+    def __init__(self, 
+                 lr=1e-4, 
+                 num_classes=3):
         super().__init__()
         self.save_hyperparameters()
         
@@ -24,6 +26,10 @@ class ActiveLearningSegmentationModule(pl.LightningModule):
             deep_supervision=True,
             use_grad_checkpoint=True
         )
+
+        self.predictor = self._get_predictor('ap18')
+        self.channels = 1
+        self.num_classes = num_classes
 
         # Accuracy predictor (ResNet18-based regression)
         self.predictor = resnet18(pretrained=False)
@@ -89,6 +95,16 @@ class ActiveLearningSegmentationModule(pl.LightningModule):
             "val_dice_pred": dice_pred.mean()
         }, prog_bar=True)
 
+    def _get_predictor(self, predictor_name):
+        if predictor_name.startswith('ap'):
+            import model.predictor as predictor
+            predictor = predictor.__dict__[predictor_name](
+                input_channels=self.channels + self.num_classes, 
+                num_classes=self.num_classes,
+                final_drop=0.5)
+        
+        return predictor
+
     @torch.no_grad()
     def predict_accuracy(self, unlabeled_loader: Any):
         self.seg_net.eval()
@@ -105,3 +121,4 @@ class ActiveLearningSegmentationModule(pl.LightningModule):
             scores.extend(dice_pred.cpu().numpy())
 
         return scores
+    

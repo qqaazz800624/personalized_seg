@@ -6,3 +6,4 @@ PAAL-MedSeg
 ConDistFL
 __pycache__
 rsna_intracranial
+*.json
