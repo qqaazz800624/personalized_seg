@@ -1,0 +1,385 @@
+# Common variables for all tasks
+variables:
+  # Inferer setting (for infer & validation)
+  dim: &dim 3
+  roi_size: &roi_size [128, 128, 128]
+  #roi_size: &roi_size [96, 96, 96]
+  inferer: &inferer
+    name: SlidingWindowInferer
+    args:
+      roi_size: *roi_size
+      sw_batch_size: 1
+      overlap: 0.5
+      mode: gaussian
+
+  # Model parameters
+  model: &model
+    name: mednext_base
+    path: custom.mednext
+    args:
+      spatial_dims: 3
+      in_channels: 1
+      out_channels: 16
+      kernel_size: 3
+      filters: 32
+      deep_supervision: True
+      use_grad_checkpoint: True
+
+  labels: &labels
+    background: 0
+    spleen: 1
+    right_kidney: 2
+    left_kidney: 3
+    gall_bladder: 4
+    esophagus: 5
+    liver: 6
+    stomach: 7
+    arotas: 8
+    postcava: 9
+    pancreas: 10
+    right_adrenal_gland: 11
+    left_adrenal_gland: 12
+    duodenum: 13
+    bladder: 14
+    prostate_uterus: 15
+  num_classes: &num_classes 16
+
+  # Parameters for image processing
+  # intensity:
+  #   min:  &intensity_min   -54.0
+  #   max:  &intensity_max   258.0
+  #   mean: &intensity_mean  100.0
+  #   std:  &intensity_std    50.0
+  spacing: &spacing [1.5, 1.5, 1.5]
+
+  # Active learning parameters
+  num_samples: &num_samples 1
+  batch_size: &batch_size 1
+
+# Config parameters for ManafalnTaskConfig
+app:
+  # Model (pretrained checkpoint) configurations
+  name: pan_mri_mednext
+  description: MedNeXt multiorgan segmentaion model open MRI dataset.
+  model_path: best_model_pan.pt # should locate in radiology/model dir
+  model_type: checkpoint # checkpoint or torchscript
+  model_state_dict: state_dict # key to load model state_dict
+
+  # Output labels
+  labels: *labels
+
+  # Epistemic settings
+  epistemic_enabled: False
+  epistemic_samples: 5
+  epistemic_model: null # Note: epistemic_model may need to enable dropout
+
+# Config parameters for ManafalnInferTask
+task_infer:
+  # if using torchscript, this setting will be ignored
+  model: *model
+
+  dimension: *dim
+  description: >
+    MedNeXt multiorgan segmentaion model open MRI dataset.
+  load_strict: True
+
+  roi_size: *roi_size
+  inferer: *inferer
+
+  pre_transforms:
+  - name: LoadImaged
+    args:
+      keys: [image]
+      #image_only: True
+  - name: EnsureChannelFirstd
+    args:
+      keys: [image]
+  - name: Orientationd
+    args:
+      keys: [image]
+      axcodes: RAS
+  - name: Spacingd
+    args:
+      keys: [image]
+      pixdim: *spacing
+      #mode: [bilinear]
+  - name: NormalizeIntensityd
+    args:
+      keys: [image]
+  - name: EnsureTyped
+    args:
+      keys: [image]
+
+  inv_transforms: []
+
+  post_transforms:
+  - name: EnsureTyped
+    args:
+      keys: [pred]
+  - name: Activationsd
+    args:
+      keys: [pred]
+      softmax: True
+  - name: AsDiscreted
+    args:
+      keys: [pred]
+      argmax: True
+  - name: Restored
+    path: monailabel.transform.post
+    args:
+      keys: [pred]
+      ref_image: image
+
+# Config parameters for ManafalnTrainTask
+task_train:
+  model: *model
+
+  description: >
+    Active learning finetuning configuration for MRI multiorgan segmentation
+
+  # Training parameters
+  train_save_interval: 20
+  val_interval: 1
+  n_saved: 5
+  find_unused_parameters: False
+  load_strict: True
+
+  # These parameters will overwrite BasicTrainTask._config defaults
+  config:
+    max_epochs: 100
+    early_stop_patience: -1
+    val_split: 0.2
+    train_batch_size: *batch_size
+    val_batch_size: 1
+
+  loss:
+    name: DsDiceCELoss
+    path: custom.losses
+    args:
+      include_background: True
+      to_onehot_y: True
+      softmax: True
+      smooth_nr: 0.0
+      batch: True
+
+  optimizer:
+    name: AdamW
+    args:
+      lr: 1e-3
+
+  scheduler:
+    name: CosineAnnealingLR
+    args:
+      T_max: 100
+      eta_min: 1e-7
+
+  inferers:
+    train_inferer:
+      name: SimpleInferer
+    val_inferer: *inferer
+
+  # Training transforms
+  training:
+    pre_transforms:
+    - name: LoadImaged
+      args:
+        keys: [image, label]
+        image_only: True
+    - name: NormalizeLabelsd
+      path: manafaln.adapters.monailabel.transforms
+      args:
+        keys: [label]
+        label_names: *labels
+    - name: EnsureChannelFirstd
+      args:
+        keys: [image, label]
+    - name: Orientationd
+      args:
+        keys: [image, label]
+        axcodes: RAS
+    - name: Spacingd
+      args:
+        keys: [image, label]
+        pixdim: *spacing
+        mode: [bilinear, nearest]
+    - name: RandRotated
+      args:
+        keys: [image, label]
+        range_x: 0.5236
+        range_y: 0.5236
+        range_z: 0.5236
+        prob: 0.2
+        keep_size: False
+        mode: [bilinear, nearest]
+    - name: RandZoomd
+      args:
+        keys: [image, label]
+        prob: 0.2
+        min_zoom: 0.7
+        max_zoom: 1.4
+        mode: [trilinear, nearest]
+        keep_size: False
+    - name: NormalizeIntensityd
+      args:
+        keys: [image]
+    - name: SpatialPadd
+      args:
+        keys: [image, label]
+        spatial_size: *roi_size
+    - name: RandCropByPosNegLabeld
+      args:
+        keys: [image, label]
+        label_key: label
+        spatial_size: *roi_size
+        pos: 2.0
+        neg: 1.0
+        num_samples: *num_samples
+    - name: RandGaussianNoised
+      args:
+        keys: [image]
+        prob: 0.15
+        mean: 0.0
+        std: 0.1
+    - name: RandGaussianSmoothd
+      args:
+        keys: [image]
+        sigma_x: [0.5, 1.5]
+        sigma_y: [0.5, 1.5]
+        sigma_z: [0.5, 1.5]
+        prob: 0.15
+    - name: RandAdjustBrightnessAndContrastd
+      args:
+        keys: [image]
+        probs: [0.15, 0.15]
+        brightness_range: [0.7, 1.3]
+        contrast_range: [0.65, 1.5]
+    - name: SimulateLowResolutiond
+      args:
+        keys: [image]
+        prob: 0.25
+        zoom_range: [0.5, 1.0]
+    - name: RandAdjustContrastd
+      args:
+        keys: [image]
+        prob: 0.15
+        gamma: [0.8, 1.2]
+    - name: RandInverseIntensityGammad
+      args:
+        keys: [image]
+        prob: 0.15
+        gamma: [0.8, 1.2]
+    - name: RandFlipAxes3Dd
+      args:
+        keys: [image, label]
+        prob_x: 0.50
+        prob_y: 0.50
+        prob_z: 0.50
+    - name: EnsureTyped
+      args:
+        keys: [image, label]
+    - name: SelectItemsd
+      args:
+        keys: [image, label]
+
+    post_transforms:
+    - name: ToTensord
+      args:
+        keys: [pred, label]
+    - name: RemoveDsHeadsd
+      path: manafaln.adapters.monailabel.transforms
+      args:
+        keys: [pred]
+        dim: 0
+    - name: Activationsd
+      args:
+        keys: [pred]
+        softmax: True
+    - name: AsDiscreted
+      args:
+        keys: [pred, label]
+        argmax: [True, False]
+        to_onehot: 16
+        #dim: 1
+
+  # Validation transforms
+  validation:
+    pre_transforms:
+    - name: LoadImaged
+      args:
+        keys: [image, label]
+        image_only: True
+    - name: NormalizeLabelsd
+      path: manafaln.adapters.monailabel.transforms
+      args:
+        keys: [label]
+        label_names: *labels
+    - name: EnsureChannelFirstd
+      args:
+        keys: [image, label]
+    - name: Orientationd
+      args:
+        keys: [image, label]
+        axcodes: RAS
+    - name: Spacingd
+      args:
+        keys: [image, label]
+        pixdim: *spacing
+        mode: [bilinear, nearest]
+    - name: NormalizeIntensityd
+      args:
+        keys: [image]
+    - name: EnsureTyped
+      args:
+        keys: [image, label]
+    - name: SelectItemsd
+      args:
+        keys: [image, label]
+
+    post_transforms:
+    - name: ToTensord
+      args:
+        keys: [pred, label]
+    - name: Activationsd
+      args:
+        keys: [pred]
+        softmax: True
+    - name: AsDiscreted
+      args:
+        keys: [pred, label]
+        argmax: [True, False]
+        to_onehot: 16
+        # dim: 1
+    # - name: SplitDimd
+    #   args:
+    #     keys: [preds, label]
+    #     dim: 1
+    #     output_postfixes:
+    #     - background
+    #     - spleen
+    #     - right kidney
+    #     - left kidney
+    #     - gall bladder
+    #     - esophagus
+    #     - liver
+    #     - stomach
+    #     - arota
+    #     - postcava
+    #     - pancreas
+    #     - right adrenal gland
+    #     - left adrenal gland
+    #     - duodenum
+    #     - bladder
+    #     - prostate/uterus
+    #     update_meta: False
+
+  dataset:
+    name: HybridCacheDataset
+    args:
+      cache_rate: 1.0
+      num_workers: 4
+
+  dataloader:
+    name: DataLoader
+    args:
+      batch_size: 1
+

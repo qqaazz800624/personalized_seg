@@ -1,0 +1,331 @@
+# Common variables for all tasks
+variables:
+  # Inferer setting (for infer & validation)
+  dim: &dim 3
+  roi_size: &roi_size [96, 96, 96]
+  backbone: &backbone SegResNet
+  num_classes: &num_classes 3
+  base_lr: &base_lr 0.000524503652591647
+  weight_decay: &weight_decay 1e-5
+  epochs: &epochs 100
+  warmup_epochs: &warmup_epochs 20
+  inferer: &inferer
+    name: SlidingWindowInferer
+    args:
+      roi_size: *roi_size
+      sw_batch_size: 1
+      overlap: 0.75
+      mode: gaussian
+
+  # Model parameters
+  model: &model
+    name: SegResNet
+    path: monai.networks.nets
+    args:
+      blocks_down: [1, 2, 2, 4]
+      blocks_up: [1, 1, 1]
+      init_filters: 16
+      in_channels: 1
+      out_channels: *num_classes
+      dropout_prob: 0.0
+
+  labels: &labels
+    background: 0
+    tumor: 1
+    metastasis: 2
+  
+
+  # Parameters for image processing
+  min_intensity: &min_intensity -100.0
+  max_intensity: &max_intensity  200.0
+  spacing: &spacing [1.5, 1.5, 1.5]
+
+  # Active learning parameters
+  num_samples: &num_samples 1
+  batch_size: &batch_size 1
+
+# Config parameters for ManafalnTaskConfig
+app:
+  # Model (pretrained checkpoint) configurations
+  name: pinkcc_ct_segresnet
+  description: SegResNet ovary segmentaion model PINKCC CT dataset.
+  model_path: pinkcc_segresnet.pt # should locate in radiology/model dir
+  model_type: checkpoint # checkpoint or torchscript
+  model_state_dict: state_dict # key to load model state_dict
+
+  # Output labels
+  labels: *labels
+
+  # Epistemic settings
+  epistemic_enabled: False
+  epistemic_samples: 5
+  epistemic_model: null # Note: epistemic_model may need to enable dropout
+
+# Config parameters for ManafalnInferTask
+task_infer:
+  # if using torchscript, this setting will be ignored
+  model: *model
+
+  dimension: *dim
+  description: SegResNet ovary segmentaion model PINKCC CT dataset.
+  load_strict: True
+
+  roi_size: *roi_size
+  inferer: *inferer
+
+  pre_transforms:
+  - name: LoadImaged
+    args:
+      keys: [image]
+      image_only: True
+  - name: EnsureChannelFirstd
+    args:
+      keys: [image]
+  - name: Orientationd
+    args:
+      keys: [image]
+      axcodes: RAS
+  - name: ScaleIntensityRanged
+    args:
+      keys: [image]
+      a_min: *min_intensity
+      a_max: *max_intensity
+      b_min: 0.0
+      b_max: 1.0
+      clip: True
+  - name: Spacingd
+    args:
+      keys: [image]
+      pixdim: *spacing
+      mode: [bilinear]
+  - name: EnsureTyped
+    args:
+      keys: [image]
+
+  inv_transforms: []
+
+  post_transforms:
+  - name: EnsureTyped
+    args:
+      keys: [pred]
+  - name: Activationsd
+    args:
+      keys: [pred]
+      softmax: True
+  - name: AsDiscreted
+    args:
+      keys: [pred]
+      argmax: True
+  - name: Restored
+    path: monailabel.transform.post
+    args:
+      keys: [pred]
+      ref_image: image
+
+# Config parameters for ManafalnTrainTask
+task_train:
+  model: *model
+
+  description: >
+    Active learning finetuning configuration for CT ovarian segmentation
+
+  # Training parameters
+  train_save_interval: 20
+  val_interval: 1
+  n_saved: 5
+  find_unused_parameters: False
+  load_strict: True
+
+  # These parameters will overwrite BasicTrainTask._config defaults
+  config:
+    max_epochs: 100
+    early_stop_patience: -1
+    val_split: 0.2
+    train_batch_size: *batch_size
+    val_batch_size: 1
+
+  loss:
+    name: DiceCELoss
+    args:
+      to_onehot_y: True
+      softmax: True
+
+  optimizer:
+    name: AdamW
+    args:
+      lr: *base_lr
+      weight_decay: *weight_decay
+
+  scheduler:
+    name: LinearWarmupCosineAnnealingLR
+    path: custom.scheduler
+    args:
+      warmup_epochs: *warmup_epochs
+      max_epochs: *epochs
+
+  inferers:
+    train_inferer:
+      name: SimpleInferer
+    val_inferer: *inferer
+
+  # Training transforms
+  training:
+    pre_transforms:
+    - name: LoadImaged
+      args:
+        keys: [image, label]
+        image_only: True
+    - name: NormalizeLabelsd
+      path: manafaln.adapters.monailabel.transforms
+      args:
+        keys: [label]
+        label_names: *labels
+    - name: EnsureChannelFirstd
+      args:
+        keys: [image, label]
+    - name: Orientationd
+      args:
+        keys: [image, label]
+        axcodes: RAS
+    - name: ScaleIntensityRanged
+      args:
+        keys: [image]
+        a_min: *min_intensity
+        a_max: *max_intensity
+        b_min: 0.0
+        b_max: 1.0
+        clip: True
+    - name: Spacingd
+      args:
+        keys: [image, label]
+        pixdim: *spacing
+        mode: [bilinear, nearest]
+    - name: RandRotate90d
+      args:
+        keys: [image, label]
+        prob: 0.8
+        max_k: 3
+    - name: RandFlipd
+      args:
+        keys: [image, label]
+        prob: 0.4
+        spatial_axis: null
+    - name: SpatialPadd
+      args:
+        keys: [image, label]
+        spatial_size: *roi_size
+        mode: constant
+    - name: RandCropByPosNegLabeld
+      args:
+        keys: [image, label]
+        label_key: label
+        spatial_size: *roi_size
+        pos: 3.0
+        neg: 1.0
+        num_samples: *num_samples
+        image_key: image
+        image_threshold: 0
+    - name: RandShiftIntensityd
+      args:
+        keys: [image]
+        offsets: 0.1
+        prob: 0.5
+    - name: RandGaussianSmoothd
+      args:
+        keys: [image]
+        sigma_x: [0.5, 1.5]
+        sigma_y: [0.5, 1.5]
+        sigma_z: [0.5, 1.5]
+        prob: 0.15
+    - name: RandGaussianNoised
+      args:
+        keys: [image]
+        mean: 0.0
+        std: 0.01
+        prob: 0.2
+    - name: EnsureTyped
+      args:
+        keys: [image, label]
+    - name: SelectItemsd
+      args:
+        keys: [image, label]
+
+    post_transforms:
+    - name: ToTensord
+      args:
+        keys: [pred, label]
+    - name: Activationsd
+      args:
+        keys: [pred]
+        softmax: True
+    - name: AsDiscreted
+      args:
+        keys: [pred, label]
+        argmax: [True, False]
+        to_onehot: 3
+
+  # Validation transforms
+  validation:
+    pre_transforms:
+    - name: LoadImaged
+      args:
+        keys: [image, label]
+        image_only: True
+    - name: NormalizeLabelsd
+      path: manafaln.adapters.monailabel.transforms
+      args:
+        keys: [label]
+        label_names: *labels
+    - name: EnsureChannelFirstd
+      args:
+        keys: [image, label]
+    - name: Orientationd
+      args:
+        keys: [image, label]
+        axcodes: RAS
+    - name: ScaleIntensityRanged
+      args:
+        keys: [image]
+        a_min: *min_intensity
+        a_max: *max_intensity
+        b_min: 0.0
+        b_max: 1.0
+        clip: True
+    - name: Spacingd
+      args:
+        keys: [image, label]
+        pixdim: *spacing
+        mode: [bilinear, nearest]
+    - name: EnsureTyped
+      args:
+        keys: [image, label]
+    - name: SelectItemsd
+      args:
+        keys: [image, label]
+
+    post_transforms:
+    - name: ToTensord
+      args:
+        keys: [pred, label]
+    - name: Activationsd
+      args:
+        keys: [pred]
+        softmax: True
+    - name: AsDiscreted
+      args:
+        keys: [pred, label]
+        argmax: [True, False]
+        to_onehot: 3
+    
+
+  dataset:
+    name: HybridCacheDataset
+    args:
+      cache_rate: 1.0
+      num_workers: 4
+
+  dataloader:
+    name: DataLoader
+    args:
+      batch_size: 1
+
