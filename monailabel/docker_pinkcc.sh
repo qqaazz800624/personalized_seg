@@ -11,4 +11,4 @@ docker run -it --rm --name monailabel --net=host --gpus=all \
     --port 8011 \
     --studies /data \
     --conf models manafaln,sam2,scribbles \
-    --conf mfn_config config/active_learning_pinkcc_segresnet.yaml,config/active_learning_pan.yaml \
+    --conf mfn_config config/active_learning_pinkcc_segresnet.yaml,config/active_learning_pan.yaml,config/active_learning_FL.yaml \
