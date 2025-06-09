@@ -1,4 +1,4 @@
-# personalized_seg
+# Personalized Segmentation
 
 ## Overview
 
