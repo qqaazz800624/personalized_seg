@@ -2503,3 +2503,33 @@ KeyboardInterrupt
 [2025-05-18 14:54:33,162] [1] [MainThread] [INFO] (monailabel.tasks.infer.basic_infer:335) - ++ Latencies => Total: 58.6960; Pre: 3.3252; Inferer: 54.9298; Invert: 0.0673; Post: 0.0044; Write: 0.3681
 [2025-05-18 14:54:33,163] [1] [MainThread] [INFO] (monailabel.tasks.infer.basic_infer:370) - Result File: /tmp/tmp8as9o3fs.nrrd
 [2025-05-18 14:54:33,163] [1] [MainThread] [INFO] (monailabel.tasks.infer.basic_infer:371) - Result Json Keys: ['label_names', 'latencies', 'centroids']
+[2025-05-19 07:29:02,867] [1] [MainThread] [INFO] (monailabel.interfaces.utils.app:37) - Initializing App from: /apps/radiology; studies: /data; conf: {'models': 'manafaln,sam2,scribbles', 'mfn_config': 'config/active_learning_pinkcc_segresnet.yaml,config/active_learning_pan.yaml,config/active_learning_FL.yaml'}
+[2025-05-19 07:29:03,209] [1] [MainThread] [INFO] (monailabel.utils.others.class_utils:57) - Subclass for MONAILabelApp Found: <class 'main.RadiologyApp'>
+[2025-05-19 07:29:03,678] [1] [MainThread] [INFO] (manafaln.adapters.monailabel.configs.segmentation:80) - EPISTEMIC Enabled: False;Samples: 5
+[2025-05-19 07:29:03,771] [1] [MainThread] [INFO] (manafaln.adapters.monailabel.configs.segmentation:80) - EPISTEMIC Enabled: False;Samples: 5
+[2025-05-19 07:29:03,851] [1] [MainThread] [INFO] (manafaln.adapters.monailabel.configs.segmentation:80) - EPISTEMIC Enabled: False;Samples: 5
+[2025-05-19 07:29:03,851] [1] [MainThread] [INFO] (manafaln.adapters.monailabel.apps.radiology:138) - +++ Using Models: ['pan_mri_mednext', 'pinkcc_ct_segresnet', 'FL_ct_mednext']
+[2025-05-19 07:29:03,851] [1] [MainThread] [INFO] (monailabel.interfaces.app:135) - Init Datastore for: /data
+[2025-05-19 07:29:03,852] [1] [MainThread] [INFO] (monailabel.datastore.local:130) - Auto Reload: True; Extensions: ['*.nii.gz', '*.nii', '*.nrrd', '*.jpg', '*.png', '*.tif', '*.svs', '*.xml']
+[2025-05-19 07:29:03,909] [1] [MainThread] [INFO] (monailabel.datastore.local:577) - Invalidate count: 0
+[2025-05-19 07:29:03,909] [1] [MainThread] [INFO] (monailabel.datastore.local:151) - Start observing external modifications on datastore (AUTO RELOAD)
+[2025-05-19 07:29:04,103] [1] [MainThread] [INFO] (manafaln.adapters.monailabel.apps.radiology:172) - +++ Adding Inferer:: pan_mri_mednext => <manafaln.adapters.monailabel.infers.segmentation.ManafalnInferTask object at 0x7f987c2b7c70>
+[2025-05-19 07:29:04,166] [1] [MainThread] [INFO] (manafaln.adapters.monailabel.apps.radiology:172) - +++ Adding Inferer:: pinkcc_ct_segresnet => <manafaln.adapters.monailabel.infers.segmentation.ManafalnInferTask object at 0x7f987c0e0f70>
+[2025-05-19 07:29:04,601] [1] [MainThread] [INFO] (manafaln.adapters.monailabel.apps.radiology:172) - +++ Adding Inferer:: FL_ct_mednext => <manafaln.adapters.monailabel.infers.segmentation.ManafalnInferTask object at 0x7f987c0e0fa0>
+[2025-05-19 07:29:04,609] [1] [MainThread] [INFO] (monailabel.sam2.infer:65) - Image Cache Initialized: /root/.cache/monailabel/sam2
+[2025-05-19 07:29:04,610] [1] [MainThread] [INFO] (timeloop:60) - Starting Timeloop..
+[2025-05-19 07:29:04,610] [1] [MainThread] [INFO] (timeloop:42) - Registered job <function ImageCache.monitor.<locals>.run_scheduler at 0x7f986462ed40>
+[2025-05-19 07:29:04,610] [1] [MainThread] [INFO] (timeloop:63) - Timeloop now started. Jobs will run based on the interval set
+[2025-05-19 07:29:04,616] [1] [MainThread] [INFO] (manafaln.adapters.monailabel.apps.radiology:223) - {'pan_mri_mednext': <manafaln.adapters.monailabel.infers.segmentation.ManafalnInferTask object at 0x7f987c2b7c70>, 'pinkcc_ct_segresnet': <manafaln.adapters.monailabel.infers.segmentation.ManafalnInferTask object at 0x7f987c0e0f70>, 'FL_ct_mednext': <manafaln.adapters.monailabel.infers.segmentation.ManafalnInferTask object at 0x7f987c0e0fa0>, 'sam_2d': <monailabel.sam2.infer.Sam2InferTask object at 0x7f98647470a0>, 'sam_3d': <monailabel.sam2.infer.Sam2InferTask object at 0x7f9864747070>, 'Histogram+GraphCut': <monailabel.scribbles.infer.HistogramBasedGraphCut object at 0x7f9864772cb0>, 'GMM+GraphCut': <monailabel.scribbles.infer.GMMBasedGraphCut object at 0x7f987c1fa740>}
+[2025-05-19 07:29:04,740] [1] [MainThread] [INFO] (manafaln.adapters.monailabel.apps.radiology:238) - +++ Adding Trainer:: pan_mri_mednext => <manafaln.adapters.monailabel.trainers.segmentation.ManafalnTrainTask object at 0x7f987c6b3a60>
+[2025-05-19 07:29:04,804] [1] [MainThread] [INFO] (manafaln.adapters.monailabel.apps.radiology:238) - +++ Adding Trainer:: pinkcc_ct_segresnet => <manafaln.adapters.monailabel.trainers.segmentation.ManafalnTrainTask object at 0x7f9864613fd0>
+[2025-05-19 07:29:04,933] [1] [MainThread] [INFO] (manafaln.adapters.monailabel.apps.radiology:238) - +++ Adding Trainer:: FL_ct_mednext => <manafaln.adapters.monailabel.trainers.segmentation.ManafalnTrainTask object at 0x7f9864613f70>
+[2025-05-19 07:29:04,934] [1] [MainThread] [INFO] (monailabel.utils.sessions:51) - Session Path: /root/.cache/monailabel/sessions
+[2025-05-19 07:29:04,934] [1] [MainThread] [INFO] (monailabel.utils.sessions:52) - Session Expiry (max): 3600
+[2025-05-19 07:29:04,935] [1] [MainThread] [INFO] (monailabel.interfaces.app:469) - App Init - completed
+[2025-05-19 07:29:04,936] [1] [MainThread] [INFO] (timeloop:60) - Starting Timeloop..
+[2025-05-19 07:29:04,936] [1] [MainThread] [INFO] (timeloop:42) - Registered job <function MONAILabelApp.on_init_complete.<locals>.run_scheduler at 0x7f9864651090>
+[2025-05-19 07:29:04,937] [1] [MainThread] [INFO] (timeloop:63) - Timeloop now started. Jobs will run based on the interval set
+[2025-05-19 07:29:17,343] [1] [MainThread] [INFO] (monailabel.endpoints.activelearning:44) - Active Learning Request: {'strategy': 'random', 'client_id': 'user-xyz'}
+[2025-05-19 07:29:17,346] [1] [MainThread] [INFO] (monailabel.tasks.activelearning.random:47) - Random: Selected Image: 36; Weight: 1747639757
+[2025-05-19 07:29:17,360] [1] [MainThread] [INFO] (monailabel.endpoints.activelearning:60) - Next sample: {'id': '36', 'weight': 1747639757, 'path': '/data/36.nii.gz', 'ts': 1747365741, 'name': '36.nii.gz'}
